@@ -9,7 +9,9 @@
 # the command to kexec.
 # Copyright 2016 Samantha McVey <samantham@posteo.net>
 # Licensed under the GPLv3.
-# 
+
+# Get the resolved filename of the currently running script
+RUN=$(readlink -f "$0")
 BOOT_DIR="/boot"
 LINUX="${1}"
 INITRD="${1}"
@@ -30,6 +32,11 @@ fi
 
 if [ "${2}" = "-g" ]; then
   CMD_LINE=$(grep GRUB_CMDLINE_LINUX_DEFAULT /etc/default/grub | sed -e 's/GRUB_CMDLINE_LINUX_DEFAULT=\"//' -e 's/\"$//')
+  if [ ! "$( printf "%s" "$CMD_LINE" | grep '\\' )" = ""  ]; then
+    printf "You are using a multi-line CMDLINE in your /etc/default/grub file.  "
+    printf "%s does not support this yet\n" "$RUN"
+    exit 1
+  fi
   ROOT=$(mount | grep '/ ' | cut -d ' ' -f 1)
   printf "Command line: %s\n" "$CMD_LINE"
   printf "Root: %s\n" "$ROOT"
