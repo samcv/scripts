@@ -7,9 +7,12 @@ use strict;
 use warnings;
 my $home = $ENV{HOME};
 chomp $home;
-my $day;
-my $year;
-my $month;
+my($year, $month, $day);
+my $current_epoch = time();
+my $last_archive_epoch = `cat ~/bash-history/last-date`;
+if ($last_archive_epoch eq "") {
+  $last_archive_epoch = 0;
+}
 my $tempfile = $home . '/bash_history_temp';
 my $archive_dir = $home . "/bash-history";
 `mkdir -p $archive_dir`;
@@ -17,6 +20,8 @@ open(my $in, '<', "$home/.bash_history" ) or die("Could not open file: $!");
 open my $out, '>', "$tempfile" or die "Can't write new file: $!";
 #date '+%m/%d/%y %H:%M:%S' -d @147306792
 my $is_cmd_line = 0;
+my $skip = 0;
+
 foreach my $line (<$in>) {
   chomp $line;
   if ($is_cmd_line == 1) {
@@ -25,8 +30,16 @@ foreach my $line (<$in>) {
     print $dated_file "$line\n";
     close $dated_file;
   }
+  elsif ( $skip == 1 ) {
+    $skip = 0;
+    last;
+  }
   elsif ($line =~ /^#[0-9]+/) {
     $line =~ s/^#//;
+    if ($line < $last_archive_epoch) {
+      $skip = 1;
+      last;
+    }
     my $cmd = "date '+%Y/%m/%d %H:%M:%S' -d @" . "$line";
     my $date = `$cmd`;
     chomp $date;
@@ -46,3 +59,4 @@ foreach my $line (<$in>) {
 }
 close $in;
 close $out;
+`echo -n $current_epoch > ~/bash-history/last-date`;
