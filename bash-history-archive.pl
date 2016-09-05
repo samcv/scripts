@@ -5,26 +5,29 @@
 # A program to save bash history files to files named after the typed date.
 use strict;
 use warnings;
+
 my $home = $ENV{HOME};
 chomp $home;
+# Declare year month date outside of the 'foreach' loop so we can access it
+# in the next iteration of the loop
 my ( $year, $month, $day );
 my $current_epoch      = time();
 my $last_archive_epoch = `cat ~/bash-history/last-date`;
-
+# If there is no file or it's empty, set $last_archive_epoch to 0
 if ( $last_archive_epoch eq "" ) {
 	$last_archive_epoch = 0;
 }
-my $tempfile    = $home . '/bash_history_temp';
 my $archive_dir = $home . "/bash-history";
 `mkdir -p $archive_dir`;
-open( my $in, '<', "$home/.bash_history" ) or die("Could not open file: $!");
-open my $out, '>', "$tempfile" or die "Can't write new file: $!";
+open( my $histfile, '<', "$home/.bash_history" ) or die("Could not open file: $!");
 
 my $is_cmd_line = 0;
 my $skip        = 0;
 
-foreach my $line (<$in>) {
+foreach my $line (<$histfile>) {
 	chomp $line;
+	# If the last time the loop ran was a date, then is_cmd_line will equal 1
+	# Indicating it is a saved command line.
 	if ( $is_cmd_line == 1 ) {
 		$is_cmd_line = 0;
 		open my $dated_file, '>>',
@@ -33,6 +36,8 @@ foreach my $line (<$in>) {
 		print $dated_file "$line\n";
 		close $dated_file;
 	}
+	# $skip will equal 1 if our last line we read was an epoch time before what
+	# $last_archive_epoch is set to.
 	elsif ( $skip == 1 ) {
 		$skip = 0;
 		last;
@@ -56,10 +61,8 @@ foreach my $line (<$in>) {
 		close $dated_file;
 
 	}
-	else {
-		print $out "$line\n";
-	}
+
 }
-close $in;
-close $out;
+close $histfile;
+# Write the epoch time the script was started to the last-date file
 `echo -n $current_epoch > ~/bash-history/last-date`;
