@@ -17,6 +17,7 @@ LINUX="${1}"
 INITRD="${1}"
 LINUX_FILE="${BOOT_DIR}/vmlinuz-${LINUX}"
 INITRD_FILE="${BOOT_DIR}/initramfs-${INITRD}.img"
+
 if [ -f "${LINUX_FILE}" ]; then
   printf "Found %s\n" "${LINUX_FILE}"
 else
