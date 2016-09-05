@@ -19,15 +19,15 @@ if ( $last_archive_epoch eq "" ) {
 }
 my $archive_dir = $home . "/bash-history";
 `mkdir -p $archive_dir`;
-open( my $histfile, '<', "$home/.bash_history" ) or die("Could not open file: $!");
+open( my $hist_file, '<', "$home/.bash_history" ) or die("Could not open file: $!");
 
 my $is_cmd_line = 0;
 my $skip        = 0;
 
-foreach my $line (<$histfile>) {
+foreach my $line (<$hist_file>) {
 	chomp $line;
 	# If the last time the loop ran was a date, then is_cmd_line will equal 1
-	# Indicating it is a saved command line.
+	# Indicating the next line is a saved command line to be printed to the file..
 	if ( $is_cmd_line == 1 ) {
 		$is_cmd_line = 0;
 		open my $dated_file, '>>',
@@ -63,6 +63,6 @@ foreach my $line (<$histfile>) {
 	}
 
 }
-close $histfile;
+close $hist_file;
 # Write the epoch time the script was started to the last-date file
 `echo -n $current_epoch > ~/bash-history/last-date`;
