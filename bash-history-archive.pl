@@ -6,11 +6,12 @@
 use strict;
 use warnings;
 my $home = `echo \$HOME`;
-my $tempfile = 'bash_history_temp';
 chomp $home;
+my $tempfile = $home . '/bash_history_temp';
+my $archive_dir = $home . "/bash-history";
 
 open(my $in, '<', "$home/.bash_history" ) or die("Could not open file: $!");
-open my $out, '>', "$home/$tempfile" or die "Can't write new file: $!";
+open my $out, '>', "$tempfile" or die "Can't write new file: $!";
 #date '+%m/%d/%y %H:%M:%S' -d @147306792
 my $var = 0;
 foreach my $line (<$in>) {
@@ -33,17 +34,16 @@ foreach my $line (<$in>) {
 }
 close $in;
 close $out;
-
-
-open my $in2, '<', "$home/$tempfile" or die "Could not open file: $!";
+`mkdir -p $archive_dir`;
+open my $in2, '<', "$tempfile" or die "Could not open file: $!";
 foreach my $line2 (<$in2>) {
   chomp $line2;
   if ($line2 =~ /^[0-9][0-9][0-9][0-9]/) {
     my($year, $month, $day) = split /\//, $line2, 3;
     $day =~ s/ .*//;
-    open my $dated_file, '>>', "$home/$year-$month-$day-bash_history.txt" or die "Could not open file: $!";
+    open my $dated_file, '>>', "$archive_dir/$year-$month-$day-bash_history.txt" or die "Could not open file: $!";
     print $dated_file "$line2\n";
     close $dated_file;
   }
 }
-`rm $home/$tempfile`
+`rm $tempfile`
