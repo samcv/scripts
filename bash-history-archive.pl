@@ -3,6 +3,8 @@
 # Licensed under the GPLv3
 #
 # A program to save bash history files to files named after the typed date.
+# By default saves files in ~/bash-history/YYYY-MM-DD-bash_history.txt
+# It will also write to a file called last-archive-date
 use strict;
 use warnings;
 
@@ -21,9 +23,10 @@ open my $hist_file, '<', "$home/.bash_history" or die("Could not open file: $!")
 # Get the last archived date
 my $use_epoch_file = 1;
 my $last_archive_epoch;
-open my $fh, '<', "$archive_dir/last-date" or $use_epoch_file = 0;
+open my $fh, '<', "$archive_dir/last-archive-date" or $use_epoch_file = 0;
 if ($use_epoch_file == 1 ) {
   $last_archive_epoch = do { local $/ = undef ; <$fh> };
+  chomp $last_archive_epoch;
   close $fh;
 }
 # If there is no file or it's empty, set $last_archive_epoch to 0
@@ -74,5 +77,7 @@ foreach my $line (<$hist_file>) {
 
 }
 close $hist_file;
-# Write the epoch time the script was started to the last-date file
-`echo -n $current_epoch > ~/bash-history/last-date`;
+# Write the epoch time the script was started to the last-archive-date file
+open my $fh2, '>', "$archive_dir/last-archive-date" or die "can't open last-archive-date: $!";
+print $fh2 "$current_epoch\n";
+close $fh2;
