@@ -17,41 +17,44 @@ my $current_epoch = time();
 
 my $archive_dir = $home . "/bash-history";
 `mkdir -p $archive_dir`;
-open my $hist_file, '<', "$home/.bash_history" or die("Could not open file: $!");
+open my $FH_history, '<', "$home/.bash_history" or die("Could not open file: $!");
 
 
 # Get the last archived date
 my $use_epoch_file = 1;
 my $last_archive_epoch;
-open my $fh, '<', "$archive_dir/last-archive-date" or $use_epoch_file = 0;
+open my $FH_last_archive_date, '<', "$archive_dir/last-archive-date"
+  or $use_epoch_file = 0;
+
 if ($use_epoch_file == 1 ) {
-  $last_archive_epoch = do { local $/ = undef ; <$fh> };
+  $last_archive_epoch = <$FH_last_archive_date>;
   chomp $last_archive_epoch;
-  close $fh;
+  close $FH_last_archive_date;
 }
 # If there is no file or it's empty, set $last_archive_epoch to 0
 else {
   $last_archive_epoch = 0;
 }
-# If the last time the loop ran was a date, then is_cmd_line will equal 1
-# Indicating the next line is a saved command line to be printed to the file..
+# If the last time the loop ran was a date, then is_cmd_line will equal 1,
+# indicating the next line is a saved command to be printed to the file.
 my $is_cmd_line = 0;
-# $skip will equal 1 if our last line we read was an epoch time before what
-# $last_archive_epoch is set to.
+# $skip will equal 1 if our last line we read was an epoch time that was smaller
+# than what $last_archive_epoch is set to.
 my $skip        = 0;
 
-foreach my $line (<$hist_file>) {
+foreach my $line (<$FH_history>) {
 	chomp $line;
 
 	if ( $is_cmd_line == 1 ) {
 		$is_cmd_line = 0;
-		open my $dated_file, '>>',
-			"$archive_dir/$year-$month-$day-bash_history.txt"
+		open my $FH_dated_backup, '>>', "$archive_dir/$year-$month-$day-bash_history.txt"
 			or die "Could not open file: $!";
-		print $dated_file "$line\n";
-		close $dated_file;
+		print $FH_dated_backup "$line\n";
+		close $FH_dated_backup;
 	}
 	elsif ( $line =~ /^#[0-9]+/ ) {
+    # Bash history files have the time printed in the format #123456 on the first line,
+    # and the command on the next line.
 		$line =~ s/^#//;
 		if ( $line < $last_archive_epoch ) {
       $skip = 1;
@@ -63,21 +66,21 @@ foreach my $line (<$hist_file>) {
   		my $cmd  = "date '+%Y/%m/%d %H:%M:%S' -d @" . "$line";
   		my $date = `$cmd`;
   		chomp $date;
-  		( $year, $month, $day ) = split /\//, $date, 3;
+  		( $year, $month, $day ) = split m!/!, $date, 3;
   		$day =~ s/ .*//;
-  		open my $dated_file, '>>',
+  		open my $FH_dated_backup, '>>',
   			"$archive_dir/$year-$month-$day-bash_history.txt"
   			or die "Could not open file: $!";
-  		print $dated_file "$date  ";
+  		print $FH_dated_backup "$date  ";
   		$is_cmd_line = 1;
-  		close $dated_file;
+  		close $FH_dated_backup;
     }
 
 	}
 
 }
-close $hist_file;
+close $FH_history;
 # Write the epoch time the script was started to the last-archive-date file
-open my $fh2, '>', "$archive_dir/last-archive-date" or die "can't open last-archive-date: $!";
-print $fh2 "$current_epoch\n";
-close $fh2;
+open $FH_last_archive_date, '>', "$archive_dir/last-archive-date" or die "can't open last-archive-date: $!";
+print $FH_last_archive_date "$current_epoch\n";
+close $FH_last_archive_date;
