@@ -1,7 +1,7 @@
 #!/bin/env sh
 # A script to automate kexec, which allows rebooting without having to go to BIOS
 # or do a POST.
-# Usage: ./kexec-prepare.sh <kernel-name> <option>
+# Usage: kexec-prepare.sh <kernel-name> <option>
 # No option implies to reuse the current command line options.
 # The -g option will read the kernel command line options in /etc/default/grub
 # and append to it the root filesystem that is currently mounted at '/'
