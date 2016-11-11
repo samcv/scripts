@@ -1,4 +1,4 @@
-#!/bin/env sh
+#!/bin/env bash
 # A script to automate kexec, which allows rebooting without having to go to BIOS
 # or do a POST.
 # Usage: kexec-prepare.sh <kernel-name> <option>
@@ -18,6 +18,11 @@ INITRD="${1}"
 LINUX_FILE="${BOOT_DIR}/vmlinuz-${LINUX}"
 INITRD_FILE="${BOOT_DIR}/initramfs-${INITRD}.img"
 
+if [[ "$1" = "" || "$1" = "-h" || "$1" = "--help" ]]; then
+	printf "You did not enter any terms.\n Usage: %s <linux-kernel-name> <options>\n" "$0"
+	printf " The only option is -g which reads /etc/default/grub for the linux command line\n"
+	exit
+fi
 if [ -f "${LINUX_FILE}" ]; then
   printf "Found %s\n" "${LINUX_FILE}"
 else

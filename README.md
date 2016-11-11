@@ -11,7 +11,7 @@ For this to work you will need to add the following to your `~/.bashrc`
 
 
 ## kexec-prepare.sh
-A script to automate kexec, which allows rebooting without having to go to BIOS or do a POST.  More details on kexec here.
+A script to automate kexec, which allows rebooting without having to go to BIOS or do a POST.  More details on [kexec here](http://linux.die.net/man/8/kexec).
 
     Usage: kexec-prepare.sh <kernel-name> <option>
 No option implies to reuse the current command line options.
