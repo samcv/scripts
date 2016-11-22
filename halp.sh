@@ -19,8 +19,8 @@ try_help () {
 try_search () {
   printf "Search Google for $program? [y/N]: "
   read YES_NO
-  if [ $YES_NO = 'y' ] || [ $YES_NO = 'Y' ];then
-    xdg-open "https://www.google.com/search?q=$1"
+  if [ "$YES_NO" = 'y' ] || [ "$YES_NO" = 'Y' ];then
+    xdg-open "https://www.google.com/search?q=$program"
   else
     exit 0
   fi
