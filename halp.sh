@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
+# This program is Free Software. Licensed under a BSD 2 clause License.
+# Author: Samantha McVey samantham@posteo.net
+
 program="$1"
 try_info () {
   if [ "$(info -w "$program")" = "dir" ]; then
