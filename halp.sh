@@ -26,4 +26,4 @@ try_search () {
   fi
 }
 
-man "$1" || try_help || try_info || try_search
+man "$program" || try_help || try_info || try_search
