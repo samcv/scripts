@@ -14,7 +14,14 @@ Bool:D :$portage-only = False
 ) {
     my Str:D $result = qqx[equery -C g --depth 1 $query];
     my Str:D @sorted = $result.split("\n\n")>>.trim
-            .sort({ $^a.subst(/^.*?'-'/, '') cmp $^b.subst(/^.*?'-'/, '') });
+            .sort( -> $a is copy, $b is copy {
+                #my $b = $^b; my $a = $^a;
+                $b = $b.lines[0].subst(/^.*'-'(.*?)':'?$/, {"$0"});
+                $a = $a.lines[0].subst(/^.*'-'(.*?)':'?$/, {"$0"});
+                $a = 0 if $a eq '9999';
+                $b = 0 if $b eq '9999';
+                $b cmp $a;
+    });
     if !@sorted {
         note $result;
         exit;
