@@ -6,11 +6,41 @@ not availible with equo (entropy). Installs all dependencies for the package
 with equo and then installs the package with portage. Optionally adds the new
 portage installed program to C<package.mask>
 
+use Terminal::ANSIColor;
+our class package {
+    has Str $.key;
+    has Str $.value;
+    has Str $.revision;
+    method set (Str:D $package) {
+        $package.match(/
+            $<package>=(.*?) '-'
+            $<version>=(<[\S]-[-]>+)
+            [ '-' $<revision>=('r'\d+) ]? $/);
+        my $package-pair = seperate-package-version($package);
+        $!key = ~$<package>;
+        $!value = ~$<version>;
+        $!revision = ~$<revision> if $<revision>;
+        self;
+    }
+    method package { $!key }
+    method packver {
+        $!revision ?? "$!key/$!value-$!revision" !! "$!key/$!value";
+    }
+    method plain {
+        $!revision ?? "$!key/$!value-$!revision" !! "$!key/$!value";
+    }
+    method Str {
+        $!revision
+        ?? colored($.key, 'blue') ~ '/' ~ colored($.value, 'green') ~ '-' ~ colored($!revision, 'cyan')
+        !! colored($.key, 'blue') ~ '/' ~ colored($.value, 'green');
+    }
+}
 multi sub MAIN
 (
-Str:D $query,
-Bool:D :$install = False,
-Bool:D :$portage-only = False
+Str:D  $query,
+Bool:D :$install      = False,
+Bool:D :$portage-only = False,
+Bool:D :$mask-only    = False,
 ) {
     my Str:D $result = qqx[equery -C g --depth 1 $query];
     my Str:D @sorted = $result.split("\n\n")>>.trim
@@ -29,10 +59,14 @@ Bool:D :$portage-only = False
     @sorted = @sorted[0].lines;
     my Str:D $name = @sorted.shift;
     $name .= subst: /':'\s*$/, '';
-    note "Deps for package: $name";
-    my Str:D @deps = @sorted>>.subst( /:s '[' \d+ ']' /, '')>>.trim;
-    say @deps.join(' ');
-    if $install {
+    my $pack = package.new.set($name);
+    my package:D @deps = @sorted>>.subst( /:s '[' \d+ ']' /, '')>>.trim.map({package.new.set: $_ });
+    note colored("Deps for package: ", "bold") ~ $pack;
+    say '-' x 40 ~ "\n" ~ @deps.join("\n");
+    if $mask-only {
+        package-mask seperate-package-version($name);
+    }
+    elsif $install {
         if $portage-only {
             portage-install $name;
         }
@@ -40,16 +74,24 @@ Bool:D :$portage-only = False
             install $name, @deps;
         }
     }
-        
+
 }
-sub install (Str:D $package, Str:D @deps) {
+sub check-root (Str:D $verb) {
     if %*ENV<USER> ne 'root' {
-        note "You are not root. Can't install";
+        note colored("You are not root. Can't $verb", 'bold underline');
         exit 1;
     }
-    my $cmd = run 'equo', 'install', '--ask', |@deps;
+}
+sub announce-cmd (@args) {
+    note colored('>>>> Launching: ', 'bold') ~ colored(@args[0], 'underline bold') ~ ' ' ~ @args[1..*]>>.perl;
+}
+sub install (Str:D $package, package:D @deps) {
+    check-root('install');
+    my @args = 'equo', 'install', '--ask', |@deps>>.package;
+    announce-cmd(@args);
+    my $cmd = run |@args;
     if $cmd.exitcode == 0 {
-        if bool-prompt "Do you want to install it using portage now? N/y" {
+        if bool-prompt "Do you want to install it using portage now?" {
             portage-install($package);
         }
     }
@@ -58,24 +100,46 @@ sub seperate-package-version ($_) {
     .match(/  $<package>=(.*?) '-' $<version>=(<[\S]-[-]>+) $/);
     ~$<package> => ~$<version>;
 }
-my $package-mask = '/etc/entropy/packages/package.mask';
-sub bool-prompt (Str:D $line = 'N/y') {
-    my $prompt = prompt $line;
+sub bool-prompt (Str:D $line = 'prompt: ') {
+    state $yn = [~] colored(' [', 'bold'), colored('y', 'green'), '/', colored('N', 'red'), colored('] ', 'bold');
+    my $prompt = prompt $line ~ $yn;
     $prompt ~~ /:i << y[es]? >> /;
 }
-sub portage-install (Str:D $package) {
-    my $package-pair = seperate-package-version($package);
-    my $cmd = run 'emerge', '--ask', '=' ~ $package;
-    if $cmd.exitcode == 0 {
-        if bool-prompt "Add entry for $package into $package-mask ?" {
-            note "Appending $package-mask with $package-pair.key()";
-            $package-mask.IO.spurt: :append, "$package-pair.key()\n";
+multi package-mask (package:D $package-pair, Bool:D :$ignore-all-versions = False) {
+    check-root('mask');
+    my $package-mask-file = '/etc/entropy/packages/package.mask';
+    for $package-mask-file.IO.lines {
+        if .contains($package-pair.key) {
+            say "{colored 'Already', 'bold'} see in the file '$_' which matches $package-pair";
         }
+    }
+    my $mask = $ignore-all-versions
+        ?? ""
+        !! "<=";
+    if bool-prompt colored("Add entry for ", 'bold') ~ "$mask$package-pair into {colored $package-mask-file, 'underline'}?" {
+        note "Appending $package-mask-file with $package-pair.key()";
+        $package-mask-file.IO.spurt: :append, "$mask$package-pair.plain()\n";
+    }
+}
+multi package-mask (Pair:D $package-pair, Bool:D :$ignore-all-versions = False) {
+    package-mask(package.new(key => $package-pair.key, value => $package-pair.value), :$ignore-all-versions);
+}
+sub portage-install (Str:D $package, Bool:D $ignore-all-versions = False) {
+    check-root('portage-install');
+    my $package-pair = seperate-package-version($package);
+    my @args = 'emerge', '--ask', '>=' ~ $package;
+    announce-cmd(@args);
+    my $cmd = run |@args;
+    my @lines;
+    if $cmd.exitcode == 0 {
+        package-mask($package-pair);
         note "Resyncing entropy and portage databases";
-        my $equo-sync = run |<equo rescue spmsync --ask>;
+        my @args = <equo rescue spmsync --ask>;
+        announce-cmd(@args);
+        my $equo-sync = run |@args;
         say $equo-sync.exitcode;
     }
-    
+
 }
 multi sub MAIN (Bool:D :$test) {
     require Test <&is &is-deeply &plan>;
