@@ -12,27 +12,25 @@ our class package {
     has Str $.value;
     has Str $.revision;
     method set (Str:D $package) {
-        $package.match(/
-            $<package>=(.*?) '-'
+        $package.match(/ ^
+            $<category>=(<[\S]-[/]>+) '/'
+            $<name>=(<[\S]-[/]>+) '-'
             $<version>=(<[\S]-[-]>+)
             [ '-' $<revision>=('r'\d+) ]? $/);
-        my $package-pair = seperate-package-version($package);
-        $!key = ~$<package>;
+        $!key = "$<category>/$<name>";
         $!value = ~$<version>;
         $!revision = ~$<revision> if $<revision>;
         self;
     }
     method package { $!key }
     method packver {
-        $!revision ?? "$!key/$!value-$!revision" !! "$!key/$!value";
+        $!revision ?? "$!key-$!value-$!revision" !! "$!key-$!value";
     }
-    method plain {
-        $!revision ?? "$!key/$!value-$!revision" !! "$!key/$!value";
-    }
+    method plain { self.packver }
     method Str {
         $!revision
-        ?? colored($.key, 'blue') ~ '/' ~ colored($.value, 'green') ~ '-' ~ colored($!revision, 'cyan')
-        !! colored($.key, 'blue') ~ '/' ~ colored($.value, 'green');
+        ?? colored($.key, 'blue') ~ '-' ~ colored($.value, 'green') ~ '-' ~ colored($!revision, 'cyan')
+        !! colored($.key, 'blue') ~ '-' ~ colored($.value, 'green');
     }
 }
 multi sub MAIN
@@ -146,4 +144,9 @@ multi sub MAIN (Bool:D :$test) {
     my $pair = seperate-package-version('media-fonts/fira-mono-3.205');
     is-deeply $pair.key, 'media-fonts/fira-mono';
     is-deeply $pair.value, '3.205';
+    my $pack = package.new.set('app-dicts/aspell-en-2016.11.20.0');
+    is $pack.key, 'app-dicts/aspell-en', '.key eq app-dicts/aspell-en';
+    is $pack.value, '2016.11.20.0', '.value eq 2016.11.20.0';
+    is $pack.revision, Str, '.revision is undefined Str';
+    is package.new.set('app-dicts/aspell-en-2016.11.20.0').plain, 'app-dicts/aspell-en-2016.11.20.0', 'plain';
 }
