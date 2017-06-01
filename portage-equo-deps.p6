@@ -58,7 +58,7 @@ Bool:D :$mask-only    = False,
     my Str:D $name = @sorted.shift;
     $name .= subst: /':'\s*$/, '';
     my $pack = package.new.set($name);
-    my package:D @deps = @sorted>>.subst( /:s '[' \d+ ']' /, '')>>.trim.map({package.new.set: $_ });
+    my package:D @deps = @sorted>>.subst( /:s '[' \d+ ']' /, '')>>.trim.grep({$_ ne $name}).map({package.new.set: $_ });
     note colored("Deps for package: ", "bold") ~ $pack;
     say '-' x 40 ~ "\n" ~ @deps.join("\n");
     if $mask-only {
