@@ -1,10 +1,13 @@
 #!/usr/bin/env perl6
+=begin pod
 =NAME portage-equo installer
 =DESCRIPTION
 Created for use on Sabayon. Meant for installing packages with emerge (portage) that are
 not availible with equo (entropy). Installs all dependencies for the package
 with equo and then installs the package with portage. Optionally adds the new
 portage installed program to C<package.mask>
+=end pod
+
 
 use Terminal::ANSIColor;
 our class package {
@@ -35,15 +38,14 @@ our class package {
 }
 multi sub MAIN
 (
-Str:D  $query,
-Bool:D :$install      = False,
+Str:D $query,
+Bool:D :$install = False,
 Bool:D :$portage-only = False,
-Bool:D :$mask-only    = False,
-) {
-    my Str:D $result = qqx[equery -C g --depth 1 $query];
+Bool:D :$mask-only = False) {
+
+    my Str:D $result = run(|<equery -C g --depth 1>, $query, :out).out.slurp;
     my Str:D @sorted = $result.split("\n\n")>>.trim
             .sort( -> $a is copy, $b is copy {
-                #my $b = $^b; my $a = $^a;
                 $b = $b.lines[0].subst(/^.*'-'(.*?)':'?$/, {"$0"});
                 $a = $a.lines[0].subst(/^.*'-'(.*?)':'?$/, {"$0"});
                 $a = 0 if $a eq '9999';
@@ -72,7 +74,6 @@ Bool:D :$mask-only    = False,
             install $name, @deps;
         }
     }
-
 }
 sub check-root (Str:D $verb) {
     if %*ENV<USER> ne 'root' {
@@ -85,7 +86,7 @@ sub announce-cmd (@args) {
 }
 sub install (Str:D $package, package:D @deps) {
     check-root('install');
-    my @args = 'equo', 'install', '--ask', |@deps>>.package;
+    my @args = 'equo', 'install', '--ask', |@deps>>.value;
     announce-cmd(@args);
     my $cmd = run |@args;
     if $cmd.exitcode == 0 {
@@ -137,8 +138,8 @@ sub portage-install (Str:D $package, Bool:D $ignore-all-versions = False) {
         my $equo-sync = run |@args;
         say $equo-sync.exitcode;
     }
-
 }
+
 multi sub MAIN (Bool:D :$test) {
     require Test <&is &is-deeply &plan>;
     my $pair = seperate-package-version('media-fonts/fira-mono-3.205');
