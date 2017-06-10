@@ -79,7 +79,7 @@ Bool:D :$mask-only = False) {
     note colored("Deps for package: ", "bold") ~ $pack;
     say '-' x 40 ~ "\n" ~ @deps.join("\n");
     if $mask-only {
-        package-mask seperate-package-version($name);
+        package-mask $pack;
     }
     elsif $install {
         if $portage-only or !@deps {
