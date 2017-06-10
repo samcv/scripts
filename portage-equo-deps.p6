@@ -17,15 +17,24 @@ our class package {
     has Str $.version;
     has Str $.revision;
     method set (Str:D $package) {
-        $package.match(/ ^
-            $<category>=(<[\S]-[/]>+) '/'
+        my @parts = $package.split('/');
+        die if @parts.elems != 2;
+        $!category = @parts[0];
+        my @parts2 = @parts[1].split('-');
+        $!revision = @parts2.pop if @parts2.tail.starts-with('r');
+        $!version = @parts2.pop;
+        $!package-name =  @parts2.join('-');
+        #`{{$!package-name
+        say @parts2.perl;
+        @parts[1].match(/ ^
             $<name>=(<[\S]-[/]>+) '-'
             $<version>=(<[\d.]>+)
             [ '-' $<revision>=('r'\d+) ]? $/);
         $!package-name = ~$<name>;
         $!version = ~$<version>;
-        $!category = ~$<category>;
         $!revision = ~$<revision> if $<revision>;
+        #die $package unless $!package-name;
+    }}
         self;
     }
     method package { "$!category/$!package-name" }
@@ -34,9 +43,12 @@ our class package {
     }
     method plain { self.packver }
     method Str {
-        $!revision
-        ?? colored(self.package, 'blue') ~ '-' ~ colored($!version, 'green') ~ '-' ~ colored($!revision, 'cyan')
-        !! colored(self.package, 'blue') ~ '-' ~ colored($!version, 'green');
+        [~] colored($!category, 'blue'),
+            colored('/', 'bold'),
+            colored($!package-name, 'cyan'),
+            colored('-', 'bold'),
+            colored($!version, 'green'),
+            ($!revision ?? colored('-', 'bold') ~ colored($!revision, 'cyan') !! '')
     }
 }
 multi sub MAIN
@@ -70,7 +82,7 @@ Bool:D :$mask-only = False) {
         package-mask seperate-package-version($name);
     }
     elsif $install {
-        if $portage-only {
+        if $portage-only or !@deps {
             portage-install $pack;
         }
         else {
@@ -157,4 +169,10 @@ multi sub MAIN (Bool:D :$test) {
     is $jre.category, 'virtual', 'category is virtual';
     is $jre.package-name, 'jre', 'package-name is jre';
     is $jre.version, '1.8.0', 'package-name is jre';
+    say $jre.Str;
+    my @array = [
+    ['dev-libs', 'openssl', '1.0.2k', ''],
+    ];
+    my $ssl = package.new.set('dev-libs/openssl-1.0.2k');
+    is $ssl.category, @array[0][0];
 }
