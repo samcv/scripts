@@ -1,13 +1,10 @@
 #!/usr/bin/env perl6
-=begin pod
 =NAME portage-equo installer
 =DESCRIPTION
 Created for use on Sabayon. Meant for installing packages with emerge (portage) that are
 not availible with equo (entropy). Installs all dependencies for the package
 with equo and then installs the package with portage. Optionally adds the new
 portage installed program to C<package.mask>
-=end pod
-
 
 use Terminal::ANSIColor;
 our class package {
@@ -24,17 +21,6 @@ our class package {
         $!revision = @parts2.pop if @parts2.tail.starts-with('r');
         $!version = @parts2.pop;
         $!package-name =  @parts2.join('-');
-        #`{{$!package-name
-        say @parts2.perl;
-        @parts[1].match(/ ^
-            $<name>=(<[\S]-[/]>+) '-'
-            $<version>=(<[\d.]>+)
-            [ '-' $<revision>=('r'\d+) ]? $/);
-        $!package-name = ~$<name>;
-        $!version = ~$<version>;
-        $!revision = ~$<revision> if $<revision>;
-        #die $package unless $!package-name;
-    }}
         self;
     }
     method package { "$!category/$!package-name" }
@@ -58,7 +44,13 @@ Bool:D :$install = False,
 Bool:D :$portage-only = False,
 Bool:D :$mask-only = False) {
 
-    my Str:D $result = run(|<equery -C g --depth 1>, $query, :out).out.slurp;
+    my $cmd = run(|<equery -C g --depth 1>, $query, :out, :err);
+    my Str:D $result = $cmd.out.slurp;
+    my Str:D $stderr = $cmd.err.slurp;
+    $*ERR.print: $stderr if $stderr;
+    if $cmd.exitcode != 0 or $stderr.contains('!!! No packages matching') {
+        exit $cmd.exitcode || 1;
+    }
     my Str:D @sorted = $result.split("\n\n")».trim
             .sort( -> $a is copy, $b is copy {
                 $b = $b.lines[0].subst(/^.*'-'(.*?)':'?$/, {"$0"});
@@ -152,7 +144,7 @@ sub portage-install (package:D $package, Bool:D $ignore-all-versions = False) {
 }
 
 multi sub MAIN (Bool:D :$test) {
-    require Test <&is &is-deeply &plan>;
+    require Test <&is &is-deeply &plan &done-testing>;
     my $pair = seperate-package-version('media-fonts/fira-mono-3.205');
     is-deeply $pair.key, 'media-fonts/fira-mono';
     is-deeply $pair.value, '3.205';
@@ -175,4 +167,5 @@ multi sub MAIN (Bool:D :$test) {
     ];
     my $ssl = package.new.set('dev-libs/openssl-1.0.2k');
     is $ssl.category, @array[0][0];
+    done-testing;
 }
