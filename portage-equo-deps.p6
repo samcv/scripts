@@ -93,10 +93,20 @@ sub announce-cmd (@args) {
 }
 sub install (package:D $package, package:D @deps) {
     check-root('install');
-    my @args = 'equo', 'install', '--ask', |@deps».package;
+    my @deps-to-install;
+    note "Checking what deps are installed…";
+    my $equo-query-cmd = run('equo', 'query', 'installed', |@deps».package, '--quiet', :out, :err);
+    my $equo-installed-out = $equo-query-cmd.out.slurp;
+    $ = $equo-query-cmd.err.close;
+    $ = $equo-query-cmd.out.close;
+    for @deps -> $dep {
+        @deps-to-install.push($dep) unless $equo-installed-out.contains($dep.package) and $equo-query-cmd.exitcode == 0;
+    }
+    say @deps - @deps-to-install, " depencendies were already installed! Yay. Only ", @deps-to-install.elems, " left to install now.";
+    my @args = 'equo', 'install', '--ask', |@deps-to-install».package;
     announce-cmd(@args);
-    my $cmd = run |@args;
-    if $cmd.exitcode == 0 {
+    my $equo-install-cmd = run |@args;
+    if $equo-install-cmd.exitcode == 0 {
         if bool-prompt "Do you want to install it using portage now?" {
             portage-install($package);
         }
